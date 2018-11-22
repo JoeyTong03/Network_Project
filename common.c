@@ -1,5 +1,5 @@
-
 #include "common.h"
+
 const int TRUE = 1;
 const int FALSE = 0;
 char *SERVER_DEFAULTIP = "0.0.0.0";
@@ -168,6 +168,12 @@ int GetSocketPara(int argc, char *argv[], struct SocketPara *obj, const int isSe
         if (strcasecmp(argv[i], "--nofork") == TRUE)
         {
             obj->isFork = FALSE;
+			if(obj->isBlock==TRUE)//一个主进程处理多个连接必须是非阻塞方式
+			{
+				printf("error:--nofork is conflict with --block!\n");
+				exit(EXIT_FAILURE);
+			}
+				
         }
 
         //num
@@ -211,3 +217,121 @@ int GetSocketPara(int argc, char *argv[], struct SocketPara *obj, const int isSe
     }
 }
 
+/**********************
+ * 函数名称：mywrite                             
+ * 功    能：对write函数系统调用重新封装
+ * 参    数：fd--文件描述符，buffer--准备写的数据，count--准备写多少数据
+			 filepath--将写的数据备份到本地文件中，默认不备份
+ * 返    回：int - 返回实际写入的字节数，最大为count
+ * 说    明：发送缓存有大小限制，故设置循环写入。                               
+***********************/
+int MyWrite(int fd,char *buffer,int count,char *filepath=NULL)
+{
+	int nwritten,total=0;
+	FILE *fp;
+	if(filepath!=NULL)//需要将数据备份到本地文件中
+		if((fp=fopen(filepath,"a+")==NULL)//追加方式打开可读写文件filepath
+		{
+			perror(filepath);
+			return -1;
+		}
+    while(total!=count){
+        nwritten = write(fd,buffer,count-total);
+        if(nwritten==0)  
+		{
+			printf("[Write]:%d Bytes\n",total);
+			printf("[Warning]:haven't write entirely!Maybe for non-block settings or sendbuffer is full!\n");
+			return total; /*这里如果设置了非阻塞写入的话，有可能是sendbuffer满了*/
+		}
+        if(nwritten==-1) 
+		{
+			printf("[Error]:write error!Maybe for the other side has close the connection\n");
+			return -1; /*写入出错，可能对方关关闭了连接*/	
+		}	
+        total  += nwritten;
+        buffer += nwritten;
+		if(filepath!=NULL)//需要将数据备份到本地文件中
+			if((fputs(buffer,fp)==NULL)
+			{
+				perror("[file write error]");
+				return -1;
+			}
+    }
+	printf("[Write]:%d Bytes",total);
+	if(filepath!=NULL)
+		fclose(fp);
+    return total; /*返回已经写入的字节数*/
+}
+
+/**********************
+ * 函数名称：myread                             
+ * 功    能：对read函数系统调用重新封装
+ * 参    数：fd--文件描述符，buffer--存放读入的数据，count--准备读多少数据
+			 filepath--将读取的数据备份到本地文件中，默认不备份
+ * 返    回：int - 返回实际读取的字节数，最大为count
+ * 说    明：接收缓存有大小限制，故设置循环读取。                               
+***********************/
+int MyRead(int fd,char *buffer,int count,char *filepath=NULL)
+{
+	int nread,total=0;
+	FILE *fp;
+	if(filepath!=NULL)//需要将数据备份到本地文件中
+	{
+		//追加方式打开可读写文件filepath
+		if((fp=fopen(filepath,"a+")==NULL)
+		{
+			perror(filepath);
+			return -1;
+		}
+	}
+    while(total!=count){
+        nread = read(fd,buffer,count-total);
+        if(nread==0)  
+		{
+			printf("[Read]:%d Bytes\n",total);
+			return total; /*读取队列为空，读取完毕*/
+		}	
+        if(nread==-1) 
+		{
+			printf("[Error]:read error!Maybe for the other side has close the connection\n");
+			return -1; /*读出错，可能对方关关闭了连接*/
+		}	
+        total  += nread;
+        buffer += nread;
+		if(filepath!=NULL)
+		{
+			if((fputs(buffer,fp)==NULL)
+			{
+				perror("[file write error]");
+				return -1;
+			}
+		}
+		
+    }
+	printf("[Read]:%d Bytes\n",total);
+	if(filepath!=NULL)
+		fclose(fp);
+    return total; /*返回已经读取的字节数*/
+}
+
+
+/**********************
+ * 函数名称：SetSocketNonblock                             
+ * 功    能：设置非阻塞连接
+ * 参    数：fd--文件描述符
+ * 返    回：int - 0成功，-1失败
+ * 说    明：                            
+***********************/
+int SetSocketNonblock(int fd)
+{
+    int flags;
+    if((flags=fcntl(fd,F_GETFL,0))==-1){
+        perror("fcntl(fd,F_GETFL)");
+        return -1;
+    }
+    if(fcntl(fd,F_SETFL,flags | O_NONBLOCK)==-1){
+        perror("fcntl(fd,F_SETFL,flags | O_NONBLOCK)");
+        return -1;
+    }
+    return 0;
+}

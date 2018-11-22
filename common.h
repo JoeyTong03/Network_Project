@@ -1,5 +1,3 @@
-
-
 #include <stdio.h>
 #include <ctype.h>
 #include <unistd.h>
@@ -22,3 +20,10 @@ struct SocketPara
     int isBlock;    //是否为阻塞方式
     int isFork;     //是否为分裂进程方式
 };
+
+int strcasecmp(const char *s1, const char *s2);
+int IsIPAvailable(char *ip);
+int GetSocketPara(int argc, char *argv[], struct SocketPara *obj, const int isServer);
+int MyWrite(int fd,char *buffer,int count,char *filepath=NULL);
+int MyRead(int fd,char *buffer,int count,char *filepath=NULL);
+int SetSocketNonblock(int fd);
