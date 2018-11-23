@@ -96,7 +96,7 @@ void ServerSendHeadInfo(int* _step,int _serversocket)
         write(ServerSocket,head[step],strlen(head[step]));
     }
 
-    _step++;
+    (*_step)++;
 }
 
 /*************************************
@@ -259,7 +259,7 @@ void BlockServer(const int _serversock)
     /* 服务端socket连接 */
     int ServerSocket = _serversock;
     int ConnectNum=0;
-    for(;connectNum<=MAXCONNECTION;)
+    for(;ConnectNum<=MAXCONNECTION;)
     {
         //用来接收客户端的socket地址结构体
         struct sockaddr_in remote;
@@ -287,7 +287,7 @@ void BlockServer(const int _serversock)
             char buf[1024];
             for(i=0;i<6;i++)
             {
-                ServerSendHeadInfo(i,SockNew);
+                ServerSendHeadInfo(&i,SockNew);
                 ssize_t _s = read(SockNew, buf, sizeof(buf)-1);
                 if(i<5&&_s>0)
                 {
