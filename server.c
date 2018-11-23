@@ -96,7 +96,7 @@ void ServerSendHeadInfo(int* _step,int _serversocket)
         write(ServerSocket,head[step],strlen(head[step]));
     }
 
-    (*_step)++;
+    _step++;
 }
 
 /*************************************
@@ -274,7 +274,7 @@ void BlockServer(const int _serversock)
         pid_t pid=fork();
         if(pid > 0)//父进程
             continue;
-        else if(connectNum<=1024)
+        else if(ConnectNum<=1024)
         {
             for(;pid<0;)//若子进程已达到极限数量
             {
@@ -282,7 +282,7 @@ void BlockServer(const int _serversock)
                 pid=fork();
             }
             printf("new connection:%d\n", SockNew);
-            connectNum++;
+            ConnectNum++;
             int i;
             char buf[1024];
             for(i=0;i<6;i++)
